@@ -17,8 +17,10 @@ unsigned int finReception = 0; /*Booléen de synchronisation pour lancer le calcu
 unsigned int nbrUn = 0; /*Nombre de période Te pour lesquelles le signal Echo est à 1*/
 
 void configSysClock();
-void writeP1(unsigned char val, unsigned char mask);
-/*NE PAS OUBLIER D'INSERER LES FONCTIONS ECRIRE LECTURE INITPORT QUE L'ON VA CREER EN BAS*/
+void ConfigTimer();
+void InitPortIO(1, config Config);
+unsigned char readPortIO(unsigned char num, unsigned char mask);
+void writePortIO(unsigned char mask);
 
 int main(void)
 {
@@ -36,14 +38,14 @@ __interrupt void ultraSoundmgt(void)
 	if (indexTime <= TGEN)
 	{
 		/* pendant l'intervalle de temps Tgen : génération sur la broche Trig du module ultrasons (patte 1.4)*/
-		//writePortIO(1, 0xFF, BIT4);
+		//writePortIO(0xFF, BIT4);
 	}
 	else if (indexTime <= TRECEPT + TGEN)
 	{
-		//writePortIO(1, 0x00, BIT4);
+		//writePortIO(0x00, BIT4);
 		/* pendant l'intervalle de temps Trecept : lecture de la valeur de la broche Echo et insertion dans le bufferEcho */
 		bufferEcho = bufferEcho << 1;
-		//bufferEcho += readPortIO(1, BIT0); //sur la patte 1.0
+		//bufferEcho += readPortIO(BIT0); //sur la patte 1.0
 		++BufferCompt;
 	}
 	else
@@ -78,13 +80,54 @@ void ConfigTimer()
 
 
 }
-void writeP1(unsigned char val, unsigned char mask)
-{
-	P1OUT |= (val & mask);
-	P1OUT &= val | ~mask;
-}
-
 
 /*On doit faire une fonction pour initialiser les port IO*/
-/*On doit faire une fonction pour lire sur les port IO*/
-/*On doit faire une fonction pour écrire sur les port IO*/
+typedef struct{
+	char output;
+	char input;
+	char IE;
+	char IES;
+	char RE;
+	char pullup1down0;
+} config;
+
+void InitPortIO(1, config Config)
+{
+	unsigned char mask = Config.output | Config.input; 
+	/*Initialisation du port 1*/
+	P1DIR |= Config.output; 
+	P1DIR &= ~Config.output;
+
+	P1IE &= ~mask;
+	P1IE |= (Config.IE&mask);
+
+	P1IES &= ~mask;
+	P1IES |= (Config.IES&mask);
+
+	P1REN &= ~mask;
+	P1REN |= (Config.RE&mask);
+
+	P1SEL &= ~mask;
+
+	P1OUT &= ~Config.input;
+	P1OUT |= Config.pullup1down0 & Config.input;
+
+
+}
+/*lire sur les port IO*/
+unsigned char readPortIO(unsigned char mask)
+{
+	unsigned char valPortIO; 
+	/*lire sur port 1*/
+	valPortIO = P1IN & mask; 
+	return valPortIO; 
+
+}
+
+/*ecrire sur les port IO*/
+void writePortIO(unsigned char val, unsigned char mask)
+{
+	/*écrire sur port 1*/
+	P1OUT |= (val & mask);
+	P1OUT &= val | ~mask ; 
+}
